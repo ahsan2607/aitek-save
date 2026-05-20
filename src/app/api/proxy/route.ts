@@ -3,6 +3,10 @@ import { NextRequest, NextResponse } from "next/server";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+/**
+ * Proxy payload shape from client to server.
+ * Input: method, url, headers, optional body.
+ */
 interface ProxyPayload {
   method: string;
   url: string;
@@ -10,6 +14,10 @@ interface ProxyPayload {
   body?: string;
 }
 
+/**
+ * Handle proxy POST requests from the browser.
+ * Input: client payload. Final state: remote response forwarded to the client.
+ */
 export async function POST(req: NextRequest): Promise<NextResponse> {
   let payload: ProxyPayload;
 

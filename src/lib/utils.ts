@@ -2,10 +2,17 @@ import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
 import type { HttpMethod, KeyValuePair } from "@/types";
 
+/**
+ * Merge Tailwind class names and deduplicate conflicts.
+ * Input: class values. Final state: normalized class string.
+ */
 export function cn(...inputs: ClassValue[]): string {
   return twMerge(clsx(inputs));
 }
 
+/**
+ * Map HTTP methods to color classes.
+ */
 export const METHOD_COLORS: Record<HttpMethod, string> = {
   GET: "text-emerald-400 bg-emerald-400/10 border-emerald-400/20",
   POST: "text-blue-400 bg-blue-400/10 border-blue-400/20",
@@ -34,6 +41,10 @@ export function getStatusColor(status: number): string {
   return "text-zinc-400";
 }
 
+/**
+ * Format a byte count into human-readable units.
+ * Input: bytes. Final state: string like "1.2 KB".
+ */
 export function formatBytes(bytes: number): string {
   if (bytes === 0) return "0 B";
   const k = 1024;
@@ -47,6 +58,10 @@ export function formatDuration(ms: number): string {
   return `${(ms / 1000).toFixed(2)}s`;
 }
 
+/**
+ * Convert enabled key/value pairs into a record.
+ * Input: array of KeyValuePair. Final state: plain object.
+ */
 export function kvToRecord(pairs: KeyValuePair[]): Record<string, string> {
   return pairs
     .filter((p) => p.enabled && p.key.trim() !== "")
@@ -56,6 +71,10 @@ export function kvToRecord(pairs: KeyValuePair[]): Record<string, string> {
     }, {});
 }
 
+/**
+ * Replace {{VAR}} placeholders with values.
+ * Input: template string and vars map. Final state: interpolated string.
+ */
 export function interpolateVariables(
   str: string,
   vars: Record<string, string>

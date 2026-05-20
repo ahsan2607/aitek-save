@@ -2,12 +2,12 @@
 
 import { useState } from "react";
 import { useAppStore } from "@/store/useAppStore";
-import { cn, METHOD_DOT_COLORS } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import {
   Plus, FolderOpen, ChevronDown, ChevronRight, Zap, Settings,
   Search,
 } from "lucide-react";
-import type { HttpMethod } from "@/types";
+// import type { HttpMethod } from "@/types";
 import { ProjectDialog } from "@/components/project/ProjectDialog";
 import { EndpointContextMenu } from "@/components/endpoint/EndpointContextMenu";
 import toast from "react-hot-toast";
@@ -71,7 +71,7 @@ export function Sidebar() {
       .filter((ep) =>
         search === "" ||
         ep.name.toLowerCase().includes(search.toLowerCase()) ||
-        ep.url.toLowerCase().includes(search.toLowerCase())
+        ep.description.toLowerCase().includes(search.toLowerCase())
       ) ?? [];
 
   return (
@@ -83,7 +83,7 @@ export function Sidebar() {
             <Zap className="w-4 h-4 text-white" strokeWidth={2.5} />
           </div>
           <span className="font-semibold text-(--text-primary) tracking-tight">
-            API<span className="text-(--accent)">Forge</span>
+            Aitek<span className="text-(--accent)">Save</span>
           </span>
         </div>
 
@@ -180,15 +180,15 @@ export function Sidebar() {
                             : "text-(--text-secondary) hover:bg-(--bg-elevated) hover:text-(--text-primary)"
                         )}
                       >
-                        <span
+                        {/* <span
                           className={cn(
                             "w-1.5 h-1.5 rounded-full shrink-0",
                             METHOD_DOT_COLORS[ep.method as HttpMethod]
                           )}
-                        />
-                        <span className="text-[11px] font-mono font-medium w-8 shrink-0 text-(--text-muted)">
+                        /> */}
+                        {/* <span className="text-[11px] font-mono font-medium w-8 shrink-0 text-(--text-muted)">
                           {ep.method.slice(0, 3)}
-                        </span>
+                        </span> */}
                         <span className="flex-1 text-xs truncate">{ep.name}</span>
                       </button>
                     ))}
@@ -211,7 +211,7 @@ export function Sidebar() {
         <div className="border-t border-(--border) p-3">
           <div className="flex items-center gap-2 text-(--text-muted) text-xs">
             <Settings className="w-3.5 h-3.5" />
-            <span>APIForge v0.1</span>
+            <span>AitekSave v0.1</span>
           </div>
         </div>
       </aside>

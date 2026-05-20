@@ -2,12 +2,12 @@
 
 import { useState } from "react";
 import { useAppStore } from "@/store/useAppStore";
-import { METHOD_COLORS, timeAgo, cn } from "@/lib/utils";
+import { timeAgo } from "@/lib/utils";
 import {
-  Plus, Edit2, Trash2, Globe, Clock, Layers,
-  ExternalLink,
+  Plus, Edit2, Trash2, Globe, Clock, Layers, ExternalLink,
 } from "lucide-react";
-import type { HttpMethod } from "@/types";
+// import type { HttpMethod } from "@/types";
+import { slugify, projectBaseUrl } from "@/types";
 import { ProjectDialog } from "./ProjectDialog";
 import toast from "react-hot-toast";
 
@@ -23,6 +23,7 @@ export function ProjectOverview({ projectId }: ProjectOverviewProps) {
   if (!project) return null;
 
   const eps = project.endpointIds.map((id) => endpoints[id]).filter(Boolean);
+  const baseUrl = projectBaseUrl(project.name);
 
   function handleDeleteProject() {
     if (!confirm(`Delete project "${project.name}" and all its endpoints?`)) return;
@@ -68,19 +69,17 @@ export function ProjectOverview({ projectId }: ProjectOverviewProps) {
             <Layers className="w-4 h-4 text-(--accent)" />
             <span>{eps.length} endpoint{eps.length !== 1 ? "s" : ""}</span>
           </div>
-          {project.baseUrl && (
-            <div className="flex items-center gap-2 text-sm text-(--text-secondary)">
-              <Globe className="w-4 h-4 text-(--accent)" />
-              <span className="font-mono text-xs truncate max-w-xs">{project.baseUrl}</span>
-            </div>
-          )}
+          <div className="flex items-center gap-2 text-sm text-(--text-secondary)">
+            <Globe className="w-4 h-4 text-(--accent)" />
+            <span className="font-mono text-xs truncate max-w-xs">{baseUrl}</span>
+          </div>
           <div className="flex items-center gap-2 text-sm text-(--text-secondary)">
             <Clock className="w-4 h-4 text-(--accent)" />
             <span>Updated {timeAgo(project.updatedAt)}</span>
           </div>
         </div>
 
-        {/* Endpoints grid */}
+        {/* Endpoints list */}
         <div className="flex-1 overflow-y-auto p-6">
           {eps.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-center">
@@ -89,7 +88,7 @@ export function ProjectOverview({ projectId }: ProjectOverviewProps) {
               </div>
               <h3 className="font-semibold text-(--text-primary) mb-1">No endpoints yet</h3>
               <p className="text-sm text-(--text-muted) mb-6">
-                Create your first endpoint to start making requests
+                Create your first endpoint to define your API
               </p>
               <button
                 onClick={() => createEndpoint(projectId)}
@@ -118,33 +117,25 @@ export function ProjectOverview({ projectId }: ProjectOverviewProps) {
                   onClick={() => setActiveEndpoint(ep.id)}
                   className="w-full flex items-center gap-4 p-4 rounded-xl border border-(--border) bg-(--bg-surface) hover:border-(--border-strong) hover:bg-(--bg-elevated) text-left transition-all group"
                 >
-                  <span
-                    className={cn(
-                      "px-2 py-0.5 rounded-md text-[11px] font-bold font-mono border shrink-0",
-                      METHOD_COLORS[ep.method as HttpMethod]
-                    )}
-                  >
+                  {/* <span className={cn(
+                    "px-2 py-0.5 rounded-md text-[11px] font-bold font-mono border shrink-0",
+                    METHOD_COLORS[ep.method as HttpMethod]
+                  )}>
                     {ep.method}
-                  </span>
+                  </span> */}
                   <div className="flex-1 min-w-0">
                     <div className="font-medium text-sm text-(--text-primary) truncate">{ep.name}</div>
                     <div className="text-xs text-(--text-muted) font-mono truncate mt-0.5">
-                      {ep.url || "No URL set"}
+                      {baseUrl}/{slugify(ep.name)}
                     </div>
+                    {ep.description && (
+                      <div className="text-xs text-(--text-muted) truncate mt-0.5">{ep.description}</div>
+                    )}
                   </div>
                   <div className="flex items-center gap-3 shrink-0">
-                    {ep.lastResponse && (
-                      <span className={cn(
-                        "text-xs font-mono font-semibold",
-                        ep.lastResponse.status >= 200 && ep.lastResponse.status < 300
-                          ? "text-emerald-400"
-                          : ep.lastResponse.status >= 400
-                            ? "text-red-400"
-                            : "text-amber-400"
-                      )}>
-                        {ep.lastResponse.status}
-                      </span>
-                    )}
+                    <span className="text-xs text-(--text-muted)">
+                      {(ep.fields ?? []).length} field{(ep.fields ?? []).length !== 1 ? "s" : ""}
+                    </span>
                     <span className="text-xs text-(--text-muted)">{timeAgo(ep.updatedAt)}</span>
                     <ExternalLink className="w-3.5 h-3.5 text-(--text-muted) opacity-0 group-hover:opacity-100 transition-opacity" />
                   </div>

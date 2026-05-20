@@ -5,11 +5,11 @@ import { useAppStore } from "@/store/useAppStore";
 import { PROJECT_COLORS, PROJECT_ICONS, cn } from "@/lib/utils";
 import { X, Check } from "lucide-react";
 import toast from "react-hot-toast";
-// import type { Project } from "@/types";
+import { slugify } from "@/types";
 
 interface ProjectDialogProps {
   onClose: () => void;
-  projectId?: string; // if set → edit mode
+  projectId?: string;
 }
 
 export function ProjectDialog({ onClose, projectId }: ProjectDialogProps) {
@@ -18,9 +18,11 @@ export function ProjectDialog({ onClose, projectId }: ProjectDialogProps) {
 
   const [name, setName] = useState(existing?.name ?? "");
   const [description, setDescription] = useState(existing?.description ?? "");
-  const [baseUrl, setBaseUrl] = useState(existing?.baseUrl ?? "");
   const [color, setColor] = useState(existing?.color ?? PROJECT_COLORS[0]);
   const [icon, setIcon] = useState(existing?.icon ?? PROJECT_ICONS[0]);
+
+  const derivedSlug = slugify(name) || "my-project";
+  const derivedBaseUrl = `https://aitek.save/${derivedSlug}/`;
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -30,10 +32,10 @@ export function ProjectDialog({ onClose, projectId }: ProjectDialogProps) {
     }
 
     if (existing && projectId) {
-      updateProject(projectId, { name: name.trim(), description, baseUrl, color, icon });
+      updateProject(projectId, { name: name.trim(), description, color, icon });
       toast.success("Project updated");
     } else {
-      createProject({ name: name.trim(), description, baseUrl, color, icon, envVars: [] });
+      createProject({ name: name.trim(), description, color, icon, envVars: [] });
       toast.success("Project created");
     }
     onClose();
@@ -61,11 +63,8 @@ export function ProjectDialog({ onClose, projectId }: ProjectDialogProps) {
         <form onSubmit={handleSubmit} className="p-6 space-y-5">
           {/* Icon + Color picker */}
           <div className="flex gap-4">
-            {/* Icon */}
             <div className="flex-1">
-              <label className="block text-xs font-medium text-(--text-secondary) mb-2">
-                Icon
-              </label>
+              <label className="block text-xs font-medium text-(--text-secondary) mb-2">Icon</label>
               <div className="grid grid-cols-5 gap-1.5 p-2 rounded-xl bg-(--bg-surface) border border-(--border)">
                 {PROJECT_ICONS.map((i) => (
                   <button
@@ -74,9 +73,7 @@ export function ProjectDialog({ onClose, projectId }: ProjectDialogProps) {
                     onClick={() => setIcon(i)}
                     className={cn(
                       "text-lg p-1 rounded-lg transition-all",
-                      icon === i
-                        ? "bg-(--accent-glow) scale-110"
-                        : "hover:bg-(--bg-overlay)"
+                      icon === i ? "bg-(--accent-glow) scale-110" : "hover:bg-(--bg-overlay)"
                     )}
                   >
                     {i}
@@ -85,11 +82,8 @@ export function ProjectDialog({ onClose, projectId }: ProjectDialogProps) {
               </div>
             </div>
 
-            {/* Color */}
             <div className="flex-1">
-              <label className="block text-xs font-medium text-(--text-secondary) mb-2">
-                Color
-              </label>
+              <label className="block text-xs font-medium text-(--text-secondary) mb-2">Color</label>
               <div className="grid grid-cols-5 gap-1.5 p-2 rounded-xl bg-(--bg-surface) border border-(--border)">
                 {PROJECT_COLORS.map((c) => (
                   <button
@@ -113,9 +107,7 @@ export function ProjectDialog({ onClose, projectId }: ProjectDialogProps) {
               <div className="font-semibold text-sm" style={{ color }}>
                 {name || "Project name"}
               </div>
-              <div className="text-xs text-(--text-muted)">
-                {description || "No description"}
-              </div>
+              <div className="text-xs text-(--text-muted)">{description || "No description"}</div>
             </div>
           </div>
 
@@ -148,19 +140,15 @@ export function ProjectDialog({ onClose, projectId }: ProjectDialogProps) {
             />
           </div>
 
-          {/* Base URL */}
+          {/* Auto-generated base URL preview */}
           <div>
             <label className="block text-xs font-medium text-(--text-secondary) mb-1.5">
               Base URL{" "}
-              <span className="text-(--text-muted) font-normal">(optional)</span>
+              <span className="text-(--text-muted) font-normal">(auto-generated)</span>
             </label>
-            <input
-              type="url"
-              value={baseUrl}
-              onChange={(e) => setBaseUrl(e.target.value)}
-              placeholder="https://api.example.com"
-              className="w-full px-3 py-2 rounded-lg bg-(--bg-surface) border border-(--border) text-sm text-(--text-primary) placeholder:text-(--text-muted) outline-none focus:border-(--accent) font-mono transition-colors"
-            />
+            <div className="px-3 py-2 rounded-lg bg-(--bg-surface) border border-(--border) font-mono text-xs text-(--text-muted) select-all cursor-text">
+              {derivedBaseUrl}
+            </div>
           </div>
 
           {/* Actions */}

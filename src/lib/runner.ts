@@ -1,6 +1,10 @@
 import type { Endpoint, EndpointResponse, EnvironmentVariable } from "@/types";
 import { kvToRecord, interpolateVariables } from "@/lib/utils";
 
+/**
+ * Build a lookup table of environment variable replacements.
+ * Input: list of env vars. Final state: object mapping key to value.
+ */
 function buildVarMap(vars: EnvironmentVariable[]): Record<string, string> {
   return vars.reduce<Record<string, string>>((acc, v) => {
     acc[v.key] = v.value;
@@ -8,6 +12,10 @@ function buildVarMap(vars: EnvironmentVariable[]): Record<string, string> {
   }, {});
 }
 
+/**
+ * Build the full request URL for an endpoint.
+ * Input: endpoint.url and query params. Final state: interpolated URL string.
+ */
 function buildUrl(endpoint: Endpoint, varMap: Record<string, string>): string {
   let url = interpolateVariables(endpoint.url.trim(), varMap);
 
@@ -22,6 +30,10 @@ function buildUrl(endpoint: Endpoint, varMap: Record<string, string>): string {
   return url;
 }
 
+/**
+ * Build the request headers for an endpoint.
+ * Input: endpoint headers, auth, and content type. Final state: headers object.
+ */
 function buildHeaders(endpoint: Endpoint, varMap: Record<string, string>): Record<string, string> {
   const headers: Record<string, string> = {};
 
@@ -51,6 +63,10 @@ function buildHeaders(endpoint: Endpoint, varMap: Record<string, string>): Recor
   return headers;
 }
 
+/**
+ * Build the request body payload if required.
+ * Input: endpoint content type and body/form data. Final state: serialized body or undefined.
+ */
 function buildBody(endpoint: Endpoint, varMap: Record<string, string>): string | undefined {
   if (["GET", "HEAD", "OPTIONS"].includes(endpoint.method)) return undefined;
   if (endpoint.contentType === "none") return undefined;
@@ -67,6 +83,10 @@ function buildBody(endpoint: Endpoint, varMap: Record<string, string>): string |
   return undefined;
 }
 
+/**
+ * Execute an endpoint request through the local proxy.
+ * Input: endpoint and env vars. Final state: endpoint response object.
+ */
 export async function runEndpoint(
   endpoint: Endpoint,
   envVars: EnvironmentVariable[] = []
