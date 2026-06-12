@@ -62,6 +62,7 @@ const regenerateFieldIds = (field: EndpointField): EndpointField => ({
   id: uuidv4(),
   children: field.children.map(regenerateFieldIds),
 });
+
 /**
  * Create a new project in the store.
  * Input: project metadata. Final state: added project and active project selected.
@@ -71,86 +72,62 @@ export const useAppStore = create<AppState>()(
     immer((set) => ({
       projects: {},
       endpoints: {},
-      activeProjectId: null,
-      activeEndpointId: null,
 
-      createProject: (data) => {
-        const project = defaultProject(data);
-        set((state) => {
-          state.projects[project.id] = project;
-          state.activeProjectId = project.id;
-          state.activeEndpointId = null;
-        });
-        return project.id;
+      hasHydrated: false,
+      setHasHydrated: (state) => {
+        set({ hasHydrated: state });
       },
 
-      /**
-       * Update an existing project partially.
-       * Input: project id and partial fields. Final state: updated project values.
-       */
+      // Auth
+      auth: {
+        user: null,
+        token: null,
+        refreshToken: null,
+        isAuthenticated: false,
+      },
 
-      updateProject: (id, data) => {
+      setAuth: (user, token, refreshToken) => {
         set((state) => {
-          if (!state.projects[id]) return;
-          Object.assign(state.projects[id], { ...data, updatedAt: Date.now() });
+          state.auth.user = user;
+          state.auth.token = token;
+          state.auth.refreshToken = refreshToken;
+          state.auth.isAuthenticated = !!token;
         });
       },
 
-      /**
-       * Delete a project and all its endpoints.
-       * Input: project id. Final state: removed project and endpoints cleaned up.
-       */
-
-      deleteProject: (id) => {
+      logout: () => {
         set((state) => {
-          const project = state.projects[id];
-          if (!project) return;
-          for (const eid of project.endpointIds) delete state.endpoints[eid];
-          delete state.projects[id];
-          if (state.activeProjectId === id) {
-            const remaining = Object.keys(state.projects);
-            state.activeProjectId = remaining[0] ?? null;
-            state.activeEndpointId = null;
+          state.auth.user = null;
+          state.auth.token = null;
+          state.auth.refreshToken = null;
+          state.auth.isAuthenticated = false;
+          state.projects = {};
+          state.endpoints = {};
+        });
+      },
+
+      setProjects: (projects) => {
+        set((state) => {
+          state.projects = projects.reduce((acc, p) => ({ ...acc, [p.id]: p }), {});
+        });
+      },
+
+      setEndpoints: (endpoints) => {
+        set((state) => {
+          state.endpoints = endpoints.reduce((acc, e) => ({ ...acc, [e.id]: e }), {});
+          // Sync endpoint IDs back to projects if they are currently loaded
+          for (const e of endpoints) {
+            if (state.projects[e.projectId] && !state.projects[e.projectId].endpointIds.includes(e.id)) {
+              state.projects[e.projectId].endpointIds.push(e.id);
+            }
           }
         });
       },
 
       /**
-       * Create a new endpoint under a project.
-       * Input: project id and optional endpoint overrides.
-       * Final state: endpoint added, project updated, endpoint activated.
+       * Duplicate an endpoint locally. 
+       * (Note: Should ideally be handled by API, but kept for UI prototyping)
        */
-
-      createEndpoint: (projectId, data = {}) => {
-        const endpoint = defaultEndpoint(projectId, data);
-        set((state) => {
-          state.endpoints[endpoint.id] = endpoint;
-          if (state.projects[projectId]) {
-            state.projects[projectId].endpointIds.push(endpoint.id);
-            state.projects[projectId].updatedAt = Date.now();
-          }
-          state.activeEndpointId = endpoint.id;
-        });
-        return endpoint.id;
-      },
-
-      /**
-       * Update an endpoint partially.
-       * Input: endpoint id and partial endpoint data. Final state: endpoint updated in store.
-       */
-
-      updateEndpoint: (id, data) => {
-        set((state) => {
-          if (!state.endpoints[id]) return;
-          Object.assign(state.endpoints[id], { ...data, updatedAt: Date.now() });
-        });
-      },
-
-      /**
-       * Duplicate an endpoint with a new id and fresh nested field ids.
-       * Input: endpoint id. Final state: duplicate endpoint created and selected.
-       */
-
       duplicateEndpoint: (id) => {
         let newId = "";
         set((state) => {
@@ -168,36 +145,11 @@ export const useAppStore = create<AppState>()(
           newId = copy.id;
           state.endpoints[copy.id] = copy;
           if (state.projects[original.projectId]) {
-            const idx = state.projects[original.projectId].endpointIds.indexOf(id);
-            state.projects[original.projectId].endpointIds.splice(idx + 1, 0, copy.id);
+            state.projects[original.projectId].endpointIds.push(copy.id);
           }
-          state.activeEndpointId = copy.id;
         });
         return newId;
       },
-
-      /**
-       * Delete an endpoint from the store and remove it from its project.
-       * Input: endpoint id. Final state: endpoint removed and active endpoint reset if necessary.
-       */
-
-      deleteEndpoint: (id) => {
-        set((state) => {
-          const endpoint = state.endpoints[id];
-          if (!endpoint) return;
-          delete state.endpoints[id];
-          const project = state.projects[endpoint.projectId];
-          if (project) {
-            project.endpointIds = project.endpointIds.filter((eid) => eid !== id);
-          }
-          if (state.activeEndpointId === id) state.activeEndpointId = null;
-        });
-      },
-
-      /**
-       * Store the last response for an endpoint.
-       * Input: endpoint id and response payload. Final state: endpoint response saved.
-       */
 
       setEndpointResponse: (id, response: EndpointResponse) => {
         set((state) => {
@@ -205,31 +157,13 @@ export const useAppStore = create<AppState>()(
           state.endpoints[id].lastResponse = response;
         });
       },
-      /**
-       * Select a project as active and clear the active endpoint.
-       * Input: project id. Final state: active project changed.
-       */
-      setActiveProject: (id) => {
-        set((state) => {
-          state.activeProjectId = id;
-          state.activeEndpointId = null;
-        });
-      },
-
-      /**
-       * Select a specific endpoint as active.
-       * Input: endpoint id. Final state: active endpoint updated.
-       */
-
-      setActiveEndpoint: (id) => {
-        set((state) => {
-          state.activeEndpointId = id;
-        });
-      },
     })),
     {
       name: "aiteksave-storage",
       storage: createJSONStorage(() => localStorage),
+      onRehydrateStorage: () => (state) => {
+        state?.setHasHydrated(true);
+      },
     }
   )
 );

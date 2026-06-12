@@ -32,11 +32,9 @@ export function ProjectDialog({ onClose, projectId }: ProjectDialogProps) {
     }
 
     if (existing && projectId) {
-      updateProject(projectId, { name: name.trim(), description, color, icon });
-      toast.success("Project updated");
+      updateProject(projectId, { name: name.trim(), description: description.trim(), color, icon });
     } else {
-      createProject({ name: name.trim(), description, color, icon, envVars: [] });
-      toast.success("Project created");
+      createProject({ name: name.trim(), description: description.trim(), color, icon, envVars: []});
     }
     onClose();
   }
@@ -172,3 +170,13 @@ export function ProjectDialog({ onClose, projectId }: ProjectDialogProps) {
     </div>
   );
 }
+// emibold hover:bg-teal-400 transition-colors shadow-(--accent-glow)"
+//             >
+//               {existing ? "Save Changes" : "Create Project"}
+//             </button>
+//           </div>
+//         </form>
+//       </div>
+//     </div>
+//   );
+// }

@@ -6,18 +6,29 @@ import { cn } from "@/lib/utils";
 import {
   Plus, FolderOpen, ChevronDown, ChevronRight, Zap, Settings,
   Search,
+  LogOut,
 } from "lucide-react";
 // import type { HttpMethod } from "@/types";
 import { ProjectDialog } from "@/components/project/ProjectDialog";
 import { EndpointContextMenu } from "@/components/endpoint/EndpointContextMenu";
 import toast from "react-hot-toast";
+import { useRouter, useParams } from "next/navigation";
+import Link from "next/link";
+import { useProjectSync } from "@/lib/hooks/useProjectSync";
+import { useEndpointSync } from "@/lib/hooks/useEndpointSync";
 
 export function Sidebar() {
   const {
-    projects, endpoints, activeProjectId, activeEndpointId,
-    setActiveProject, setActiveEndpoint, createEndpoint, deleteEndpoint,
-    duplicateEndpoint,
+    projects, endpoints, logout,
   } = useAppStore();
+  const router = useRouter();
+  const params = useParams();
+  
+  const activeProjectId = params.projectId as string;
+  const activeEndpointId = params.endpointId as string;
+
+  const { isLoadingProjects } = useProjectSync();
+  const { createEndpoint, deleteEndpoint } = useEndpointSync(activeProjectId);
 
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
   const [showProjectDialog, setShowProjectDialog] = useState(false);
@@ -37,14 +48,14 @@ export function Sidebar() {
       else next.add(id);
       return next;
     });
-    setActiveProject(id);
+    router.push(`/dashboard/projects/${id}`);
   }
 
   function handleNewEndpoint(projectId: string) {
     if (!expandedProjects.has(projectId)) {
       setExpandedProjects((prev) => new Set([...prev, projectId]));
     }
-    createEndpoint(projectId);
+    createEndpoint({ project_id: projectId, schema_mode: "free" });
   }
 
   function handleEndpointContextMenu(e: React.MouseEvent, endpointId: string) {
@@ -53,14 +64,13 @@ export function Sidebar() {
   }
 
   function handleDuplicate(id: string) {
-    duplicateEndpoint(id);
-    toast.success("Endpoint duplicated");
+    // duplicateEndpoint(id);
+    toast.error("Duplicate not yet implemented for API");
     setContextMenu(null);
   }
 
   function handleDelete(id: string) {
     deleteEndpoint(id);
-    toast.success("Endpoint deleted");
     setContextMenu(null);
   }
 
@@ -78,14 +88,14 @@ export function Sidebar() {
     <>
       <aside className="flex flex-col w-64 min-w-[256px] h-full border-r 5 bg-(--bg-surface)">
         {/* Logo */}
-        <div className="flex items-center gap-2.5 px-4 py-4 border-b border-(--border)">
+        <Link href="/dashboard" className="flex items-center gap-2.5 px-4 py-4 border-b border-(--border) hover:bg-(--bg-elevated) transition-colors">
           <div className="w-7 h-7 rounded-lg bg-(--accent) flex items-center justify-center shadow-(--accent-glow)">
             <Zap className="w-4 h-4 text-white" strokeWidth={2.5} />
           </div>
           <span className="font-semibold text-(--text-primary) tracking-tight">
             Aitek<span className="text-(--accent)">Save</span>
           </span>
-        </div>
+        </Link>
 
         {/* Search */}
         <div className="px-3 py-3 border-b border-(--border)">
@@ -166,12 +176,9 @@ export function Sidebar() {
                 {isExpanded && (
                   <div className="ml-3 pl-2 border-l border-(--border) mt-0.5 space-y-0.5">
                     {eps.map((ep) => (
-                      <button
+                      <Link
                         key={ep.id}
-                        onClick={() => {
-                          setActiveProject(ep.projectId);
-                          setActiveEndpoint(ep.id);
-                        }}
+                        href={`/dashboard/projects/${ep.projectId}/endpoints/${ep.id}`}
                         onContextMenu={(e) => handleEndpointContextMenu(e, ep.id)}
                         className={cn(
                           "w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-left group transition-all",
@@ -180,17 +187,8 @@ export function Sidebar() {
                             : "text-(--text-secondary) hover:bg-(--bg-elevated) hover:text-(--text-primary)"
                         )}
                       >
-                        {/* <span
-                          className={cn(
-                            "w-1.5 h-1.5 rounded-full shrink-0",
-                            METHOD_DOT_COLORS[ep.method as HttpMethod]
-                          )}
-                        /> */}
-                        {/* <span className="text-[11px] font-mono font-medium w-8 shrink-0 text-(--text-muted)">
-                          {ep.method.slice(0, 3)}
-                        </span> */}
                         <span className="flex-1 text-xs truncate">{ep.name}</span>
-                      </button>
+                      </Link>
                     ))}
 
                     <button
@@ -208,9 +206,26 @@ export function Sidebar() {
         </nav>
 
         {/* Bottom bar */}
-        <div className="border-t border-(--border) p-3">
-          <div className="flex items-center gap-2 text-(--text-muted) text-xs">
+        <div className="border-t border-(--border) p-3 space-y-2">
+          <button
+            onClick={() => router.push("/dashboard/settings")}
+            className={cn(
+              "w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs transition-colors",
+              "text-(--text-secondary) hover:bg-(--bg-elevated) hover:text-(--text-primary)"
+            )}
+          >
             <Settings className="w-3.5 h-3.5" />
+            <span>Settings</span>
+          </button>
+          <button
+            onClick={() => { logout(); router.push("/auth/login"); }}
+            className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs text-red-400 hover:bg-red-400/10 transition-colors"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            <span>Log Out</span>
+          </button>
+          <div className="flex items-center gap-2 text-(--text-muted) text-xs px-2 opacity-50">
+            <Zap className="w-3.5 h-3.5" />
             <span>AitekSave v0.1</span>
           </div>
         </div>

@@ -10,13 +10,20 @@ import {
 import { slugify, projectBaseUrl } from "@/types";
 import { ProjectDialog } from "./ProjectDialog";
 import toast from "react-hot-toast";
+import { useProjectSync } from "@/lib/hooks/useProjectSync";
+import { useEndpointSync } from "@/lib/hooks/useEndpointSync";
+import { useRouter } from "next/navigation";
 
 interface ProjectOverviewProps {
   projectId: string;
 }
 
 export function ProjectOverview({ projectId }: ProjectOverviewProps) {
-  const { projects, endpoints, createEndpoint, deleteProject, setActiveEndpoint } = useAppStore();
+  const { endpoints } = useAppStore();
+  const { projects } = useAppStore();
+  const router = useRouter();
+  const { deleteProject } = useProjectSync();
+  const { createEndpoint } = useEndpointSync(projectId);
   const project = projects[projectId];
   const [showEditDialog, setShowEditDialog] = useState(false);
 
@@ -91,7 +98,7 @@ export function ProjectOverview({ projectId }: ProjectOverviewProps) {
                 Create your first endpoint to define your API
               </p>
               <button
-                onClick={() => createEndpoint(projectId)}
+                onClick={() => createEndpoint({ project_id: projectId, schema_mode: "free" })}
                 className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-(--accent) text-white text-sm font-semibold hover:bg-teal-400 transition-colors"
               >
                 <Plus className="w-4 h-4" />
@@ -114,15 +121,9 @@ export function ProjectOverview({ projectId }: ProjectOverviewProps) {
               {eps.map((ep) => (
                 <button
                   key={ep.id}
-                  onClick={() => setActiveEndpoint(ep.id)}
+                  onClick={() => router.push(`/dashboard/projects/${projectId}/endpoints/${ep.id}`)}
                   className="w-full flex items-center gap-4 p-4 rounded-xl border border-(--border) bg-(--bg-surface) hover:border-(--border-strong) hover:bg-(--bg-elevated) text-left transition-all group"
                 >
-                  {/* <span className={cn(
-                    "px-2 py-0.5 rounded-md text-[11px] font-bold font-mono border shrink-0",
-                    METHOD_COLORS[ep.method as HttpMethod]
-                  )}>
-                    {ep.method}
-                  </span> */}
                   <div className="flex-1 min-w-0">
                     <div className="font-medium text-sm text-(--text-primary) truncate">{ep.name}</div>
                     <div className="text-xs text-(--text-muted) font-mono truncate mt-0.5">

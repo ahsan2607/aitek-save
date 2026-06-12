@@ -42,6 +42,21 @@ export interface EnvironmentVariable {
 
 // ─── Auth ────────────────────────────────────────────────────────────────────
 
+export interface User {
+  user_id: string;
+  name: string;
+  email: string;
+  user_api_key: string;
+  created_at: string;
+}
+
+export interface AuthState {
+  user: User | null;
+  token: string | null;
+  refreshToken: string | null;
+  isAuthenticated: boolean;
+}
+
 export interface AuthConfig {
   type: AuthType;
   bearerToken?: string;
@@ -136,21 +151,25 @@ export interface Project {
 export interface AppState {
   projects: Record<string, Project>;
   endpoints: Record<string, Endpoint>;
-  activeProjectId: string | null;
-  activeEndpointId: string | null;
+  
+  // Hydration
+  hasHydrated: boolean;
+  setHasHydrated: (val: boolean) => void;
 
-  createProject: (data: Omit<Project, "id" | "createdAt" | "updatedAt" | "endpointIds">) => string;
-  updateProject: (id: string, data: Partial<Omit<Project, "id">>) => void;
-  deleteProject: (id: string) => void;
+  // Auth
+  auth: AuthState;
+  setAuth: (user: User | null, token: string | null, refreshToken: string | null) => void;
+  logout: () => void;
 
-  createEndpoint: (projectId: string, data?: Partial<Omit<Endpoint, "id" | "projectId" | "createdAt" | "updatedAt">>) => string;
-  updateEndpoint: (id: string, data: Partial<Omit<Endpoint, "id" | "projectId">>) => void;
-  duplicateEndpoint: (id: string) => string;
-  deleteEndpoint: (id: string) => void;
+  // Syncing
+  setProjects: (projects: Project[]) => void;
+  setEndpoints: (endpoints: Endpoint[]) => void;
+
+  // UI / Selection
   setEndpointResponse: (id: string, response: EndpointResponse) => void;
-
-  setActiveProject: (id: string | null) => void;
-  setActiveEndpoint: (id: string | null) => void;
+  
+  // Keep duplicate for now as a local action if needed, or remove if API handles it
+  duplicateEndpoint: (id: string) => string;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -232,3 +251,9 @@ export interface RunRequestResult {
   durationMs: number;
   size: number;
 }
+// ;
+//   headers: Record<string, string>;
+//   body: unknown;
+//   durationMs: number;
+//   size: number;
+// }
