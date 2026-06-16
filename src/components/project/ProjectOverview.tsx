@@ -7,11 +7,11 @@ import {
   Plus, Edit2, Trash2, Globe, Clock, Layers, ExternalLink,
 } from "lucide-react";
 // import type { HttpMethod } from "@/types";
-import { slugify, projectBaseUrl } from "@/types";
+import { projectBaseUrl } from "@/types";
 import { ProjectDialog } from "./ProjectDialog";
+import { EndpointDialog } from "@/components/endpoint/EndpointDialog";
 import toast from "react-hot-toast";
 import { useProjectSync } from "@/lib/hooks/useProjectSync";
-import { useEndpointSync } from "@/lib/hooks/useEndpointSync";
 import { useRouter } from "next/navigation";
 
 interface ProjectOverviewProps {
@@ -23,9 +23,9 @@ export function ProjectOverview({ projectId }: ProjectOverviewProps) {
   const { projects } = useAppStore();
   const router = useRouter();
   const { deleteProject } = useProjectSync();
-  const { createEndpoint } = useEndpointSync(projectId);
   const project = projects[projectId];
   const [showEditDialog, setShowEditDialog] = useState(false);
+  const [showEndpointDialog, setShowEndpointDialog] = useState(false);
 
   if (!project) return null;
 
@@ -98,7 +98,7 @@ export function ProjectOverview({ projectId }: ProjectOverviewProps) {
                 Create your first endpoint to define your API
               </p>
               <button
-                onClick={() => createEndpoint({ project_id: projectId, schema_mode: "free" })}
+                onClick={() => setShowEndpointDialog(true)}
                 className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-(--accent) text-white text-sm font-semibold hover:bg-teal-400 transition-colors"
               >
                 <Plus className="w-4 h-4" />
@@ -110,7 +110,7 @@ export function ProjectOverview({ projectId }: ProjectOverviewProps) {
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-sm font-semibold text-(--text-secondary)">Endpoints</h2>
                 <button
-                  onClick={() => createEndpoint(projectId)}
+                  onClick={() => setShowEndpointDialog(true)}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-(--accent) text-white text-xs font-semibold hover:bg-teal-400 transition-colors"
                 >
                   <Plus className="w-3 h-3" />
@@ -125,19 +125,17 @@ export function ProjectOverview({ projectId }: ProjectOverviewProps) {
                   className="w-full flex items-center gap-4 p-4 rounded-xl border border-(--border) bg-(--bg-surface) hover:border-(--border-strong) hover:bg-(--bg-elevated) text-left transition-all group"
                 >
                   <div className="flex-1 min-w-0">
-                    <div className="font-medium text-sm text-(--text-primary) truncate">{ep.name}</div>
-                    <div className="text-xs text-(--text-muted) font-mono truncate mt-0.5">
-                      {baseUrl}/{slugify(ep.name)}
-                    </div>
-                    {ep.description && (
-                      <div className="text-xs text-(--text-muted) truncate mt-0.5">{ep.description}</div>
-                    )}
+                    <div className="font-medium text-sm text-(--text-primary) truncate">{ep.id}</div>
+                    {/* <div className="text-xs text-(--text-muted) font-mono truncate mt-0.5">
+                      {baseUrl}/{slugify(ep.)}
+                    </div> */}
+                      <div className="text-xs text-(--text-muted) truncate mt-0.5">{ep.APIHashKey}</div>
                   </div>
                   <div className="flex items-center gap-3 shrink-0">
-                    <span className="text-xs text-(--text-muted)">
+                    {/* <span className="text-xs text-(--text-muted)">
                       {(ep.fields ?? []).length} field{(ep.fields ?? []).length !== 1 ? "s" : ""}
-                    </span>
-                    <span className="text-xs text-(--text-muted)">{timeAgo(ep.updatedAt)}</span>
+                    </span> */}
+                    <span className="text-xs text-(--text-muted)">{timeAgo(ep.lastSeen)}</span>
                     <ExternalLink className="w-3.5 h-3.5 text-(--text-muted) opacity-0 group-hover:opacity-100 transition-opacity" />
                   </div>
                 </button>
@@ -149,6 +147,10 @@ export function ProjectOverview({ projectId }: ProjectOverviewProps) {
 
       {showEditDialog && (
         <ProjectDialog projectId={projectId} onClose={() => setShowEditDialog(false)} />
+      )}
+
+      {showEndpointDialog && (
+        <EndpointDialog projectId={projectId} onClose={() => setShowEndpointDialog(false)} />
       )}
     </>
   );

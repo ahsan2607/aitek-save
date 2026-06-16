@@ -11,6 +11,7 @@ import {
 // import type { HttpMethod } from "@/types";
 import { ProjectDialog } from "@/components/project/ProjectDialog";
 import { EndpointContextMenu } from "@/components/endpoint/EndpointContextMenu";
+import { EndpointDialog } from "@/components/endpoint/EndpointDialog";
 import toast from "react-hot-toast";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
@@ -28,10 +29,11 @@ export function Sidebar() {
   const activeEndpointId = params.endpointId as string;
 
   const { isLoadingProjects } = useProjectSync();
-  const { createEndpoint, deleteEndpoint } = useEndpointSync(activeProjectId);
+  const { deleteEndpoint } = useEndpointSync(activeProjectId);
 
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
   const [showProjectDialog, setShowProjectDialog] = useState(false);
+  const [showEndpointDialog, setShowEndpointDialog] = useState<{ projectId: string } | null>(null);
   const [search, setSearch] = useState("");
   const [contextMenu, setContextMenu] = useState<{
     endpointId: string;
@@ -55,7 +57,7 @@ export function Sidebar() {
     if (!expandedProjects.has(projectId)) {
       setExpandedProjects((prev) => new Set([...prev, projectId]));
     }
-    createEndpoint({ project_id: projectId, schema_mode: "free" });
+    setShowEndpointDialog({ projectId });
   }
 
   function handleEndpointContextMenu(e: React.MouseEvent, endpointId: string) {
@@ -80,8 +82,7 @@ export function Sidebar() {
       .filter(Boolean)
       .filter((ep) =>
         search === "" ||
-        ep.name.toLowerCase().includes(search.toLowerCase()) ||
-        ep.description.toLowerCase().includes(search.toLowerCase())
+        ep.id.toLowerCase().includes(search.toLowerCase())
       ) ?? [];
 
   return (
@@ -159,12 +160,12 @@ export function Sidebar() {
                 >
                   <span className="text-sm leading-none">{project.icon}</span>
                   <span className="flex-1 text-xs font-medium truncate">{project.name}</span>
-                  <span
+                  {/* <span
                     className="w-4 h-4 rounded text-[10px] flex items-center justify-center font-mono"
                     style={{ color: project.color, backgroundColor: `${project.color}20` }}
                   >
                     {project.endpointIds.length}
-                  </span>
+                  </span> */}
                   {isExpanded ? (
                     <ChevronDown className="w-3 h-3 opacity-50" />
                   ) : (
@@ -187,7 +188,7 @@ export function Sidebar() {
                             : "text-(--text-secondary) hover:bg-(--bg-elevated) hover:text-(--text-primary)"
                         )}
                       >
-                        <span className="flex-1 text-xs truncate">{ep.name}</span>
+                        <span className="flex-1 text-xs truncate">{ep.id}</span>
                       </Link>
                     ))}
 
@@ -233,6 +234,13 @@ export function Sidebar() {
 
       {showProjectDialog && (
         <ProjectDialog onClose={() => setShowProjectDialog(false)} />
+      )}
+
+      {showEndpointDialog && (
+        <EndpointDialog 
+          projectId={showEndpointDialog.projectId} 
+          onClose={() => setShowEndpointDialog(null)} 
+        />
       )}
 
       {contextMenu && (

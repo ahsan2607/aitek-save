@@ -106,19 +106,105 @@ export const useAppStore = create<AppState>()(
         });
       },
 
-      setProjects: (projects) => {
+      setProjects: (incomingProjects) => {
         set((state) => {
-          state.projects = projects.reduce((acc, p) => ({ ...acc, [p.id]: p }), {});
+          // 1. First, build a map of which endpoints belong to which projects 
+          // strictly from our local store's live endpoints dictionary.
+          const localProjectEndpointMap: Record<string, string[]> = {};
+          
+          for (const ep of Object.values(state.endpoints)) {
+            if (!localProjectEndpointMap[ep.projectId]) {
+              localProjectEndpointMap[ep.projectId] = [];
+            }
+            localProjectEndpointMap[ep.projectId].push(ep.id);
+          }
+
+          // 2. Map the incoming server payload into a clean lookup object
+          const incomingProjectMap = incomingProjects.reduce<Record<string, Project>>((acc, p) => {
+            const existingProject = state.projects[p.id] || {};
+            
+            acc[p.id] = {
+              ...p,
+              // PRIORITY:
+              // 1. Look at our live local endpoints dictionary map first
+              // 2. Fallback to what we currently have in state memory
+              // 3. Fallback to server payload array
+              // 4. Default to empty array
+              endpointIds: localProjectEndpointMap[p.id] || existingProject.endpointIds || p.endpointIds || []
+            };
+            return acc;
+          }, {});
+
+          // 3. Detect Deletions & Merge safely
+          const isSingleProjectPayload = incomingProjects.length === 1;
+
+          if (isSingleProjectPayload) {
+            // If it's just one project added/updated, combine it with our current cache
+            state.projects = { ...state.projects, ...incomingProjectMap };
+          } else {
+            // If it's a full sync list, overwrite state so deleted projects vanish,
+            // but the remaining projects maintain their calculated endpoints perfectly.
+            state.projects = incomingProjectMap;
+          }
         });
       },
 
-      setEndpoints: (endpoints) => {
+      setEndpoints: (incomingEndpoints) => {
         set((state) => {
-          state.endpoints = endpoints.reduce((acc, e) => ({ ...acc, [e.id]: e }), {});
-          // Sync endpoint IDs back to projects if they are currently loaded
-          for (const e of endpoints) {
-            if (state.projects[e.projectId] && !state.projects[e.projectId].endpointIds.includes(e.id)) {
-              state.projects[e.projectId].endpointIds.push(e.id);
+          // GUARD: If a background hook fetches a completely empty array of endpoints,
+          // do not touch anything. It means a background hook fired before a project ID loaded.
+          if (!incomingEndpoints || incomingEndpoints.length === 0) {
+            return;
+          }
+
+          // 1. Create a Set of project IDs involved in this specific endpoint chunk
+          const affectedProjectIds = new Set(incomingEndpoints.map((e) => e.projectId));
+
+          // 2. Update the main endpoints dictionary collection safely.
+          // Instead of wiping out everything, we only replace/add endpoints that match 
+          // the projects currently being targeted by this payload.
+          const nextEndpoints = { ...state.endpoints };
+          for (const e of incomingEndpoints) {
+            nextEndpoints[e.id] = e;
+          }
+          state.endpoints = nextEndpoints;
+
+          // 3. Sync endpoint IDs back into their respective parent projects
+          for (const e of incomingEndpoints) {
+            const project = state.projects[e.projectId];
+            if (project) {
+              if (!project.endpointIds) {
+                project.endpointIds = [];
+              }
+              if (!project.endpointIds.includes(e.id)) {
+                project.endpointIds.push(e.id);
+              }
+            }
+          }
+
+          // 4. Handle removals within the affected projects ONLY.
+          // Create a Set of valid incoming IDs to perform a fast lookup
+          const incomingIds = new Set(incomingEndpoints.map((e) => e.id));
+
+          // We look closely at our active projects. If a project was part of this incoming payload, 
+          // we clean out any local endpoints that are no longer present in the server's response.
+          for (const project of Object.values(state.projects)) {
+            if (affectedProjectIds.has(project.id) && project.endpointIds) {
+              project.endpointIds = project.endpointIds.filter((id) => {
+                // If the endpoint ID is part of the server payload, keep it if it's alive.
+                if (incomingIds.has(id)) return true;
+                
+                // If the endpoint exists in our overall state but belongs to this project 
+                // and wasn't sent down in this batch, it means it was deleted.
+                const localEp = state.endpoints[id];
+                if (localEp && localEp.projectId === project.id) {
+                  // Remove it from the general list too
+                  delete state.endpoints[id];
+                  return false;
+                }
+                
+                return true;
+              });
             }
           }
         });

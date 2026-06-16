@@ -1,14 +1,14 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useState } from "react";
 import { useAppStore } from "@/store/useAppStore";
 import { cn } from "@/lib/utils";
 import { 
-  Trash2, Copy, Plus, X, ChevronDown, ChevronRight, Type, Braces,
-  Settings2, Activity, BarChart3
+  Trash2, Copy, ChevronDown, ChevronRight, 
+  Settings2, Activity, BarChart3, Globe, Lock
 } from "lucide-react";
-import type { Endpoint, EndpointField, FieldType, FieldLocation, InputCategory } from "@/types";
-import { slugify, endpointFullUrl, makeField, PROTOCOLS } from "@/types";
+import type { Endpoint, EndpointField, FieldType, FieldLocation } from "@/types";
+import { slugify, endpointFullUrl, PROTOCOLS } from "@/types";
 import toast from "react-hot-toast";
 import { HistoryPanel } from "./HistoryPanel";
 import { AnalyticsPanel } from "./AnalyticsPanel";
@@ -16,17 +16,6 @@ import { useEndpointSync } from "@/lib/hooks/useEndpointSync";
 import Link from "next/link";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
-
-const FIELD_TYPES: FieldType[] = [
-  "string", "number", "boolean", "object", "array",
-  "date", "email", "url", "uuid", "any",
-];
-
-const FIELD_LOCATIONS: { value: FieldLocation; label: string }[] = [
-  { value: "body",  label: "Body" },
-  { value: "query", label: "Query" },
-  { value: "path",  label: "Path" },
-];
 
 const TYPE_COLORS: Record<FieldType, string> = {
   string:  "text-emerald-400 bg-emerald-400/10 border-emerald-400/20",
@@ -50,70 +39,22 @@ const PROTOCOL_COLORS: Record<string, string> = {
 };
 
 /**
- * Render a styled native select input.
+ * Render a read-only recursive field row.
  */
-function NativeSelect({
-  value, onChange, options, className,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-  options: { value: string; label: string }[];
-  className?: string;
-}) {
-  return (
-    <div className={cn("relative shrink-0", className)}>
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-full appearance-none px-2.5 py-1.5 pr-7 rounded-lg bg-(--bg-surface) border border-(--border) text-xs text-(--text-primary) outline-none focus:border-(--accent) transition-colors cursor-pointer"
-      >
-        {options.map((o, index) => (
-          <option key={index} value={o.value}>{o.label}</option>
-        ))}
-      </select>
-      <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 w-3 h-3 text-(--text-muted) pointer-events-none" />
-    </div>
-  );
-}
-
-/**
- * Render a recursive field editor row.
- */
-function FieldRow({
+function ReadOnlyFieldRow({
   field,
   depth,
-  onUpdate,
-  onDelete,
 }: {
   field: EndpointField;
   depth: number;
-  onUpdate: (updated: EndpointField) => void;
-  onDelete: () => void;
 }) {
   const [expanded, setExpanded] = useState(true);
-  const set = <K extends keyof EndpointField>(key: K, value: EndpointField[K]) =>
-    onUpdate({ ...field, [key]: value });
-
-  const hasChildren = field.type === "object" || field.type === "array";
-  const supportsEnum = field.type === "string" || field.type === "email" || field.type === "url";
-  const indentPx = depth * 20;
-
-  function addChild() {
-    const child = makeField({ location: field.location });
-    set("children", [...field.children, child]);
-  }
-
-  function updateChild(id: string, updated: EndpointField) {
-    set("children", field.children.map((c) => (c.id === id ? updated : c)));
-  }
-
-  function deleteChild(id: string) {
-    set("children", field.children.filter((c) => c.id !== id));
-  }
+  const hasChildren = (field.type === "object" || field.type === "array") && field.children.length > 0;
+  const indentPx = depth * 16;
 
   return (
     <div style={{ marginLeft: indentPx }}>
-      <div className="group rounded-xl border border-(--border) bg-(--bg-surface) p-3 space-y-2.5 hover:border-(--border-strong) transition-colors">
+      <div className="group rounded-xl border border-(--border) bg-(--bg-base) p-3 space-y-2 transition-colors">
         <div className="flex items-center gap-2">
           {hasChildren ? (
             <button
@@ -127,123 +68,41 @@ function FieldRow({
             <span className="w-4 shrink-0" />
           )}
 
-          <input
-            type="text"
-            value={field.name}
-            onChange={(e) => set("name", e.target.value)}
-            placeholder="field_name"
-            className="flex-1 min-w-0 px-2.5 py-1.5 rounded-lg bg-(--bg-elevated) border border-(--border) text-sm font-mono text-(--text-primary) placeholder:text-(--text-muted) outline-none focus:border-(--accent) transition-colors"
-          />
+          <div className="flex-1 font-mono text-xs text-(--text-primary)">
+            {field.name || <span className="italic opacity-50">unnamed</span>}
+          </div>
 
-          <NativeSelect
-            value={field.type}
-            onChange={(v) => set("type", v as FieldType)}
-            options={FIELD_TYPES.map((t) => ({ value: t, label: t }))}
-            className="w-28"
-          />
+          <span className={cn("px-1.5 py-0.5 rounded border text-[10px] font-medium", TYPE_COLORS[field.type])}>
+            {field.type === "array" ? `${field.itemType}[]` : field.type}
+          </span>
 
-          {depth === 0 && (
-            <NativeSelect
-              value={field.location}
-              onChange={(v) => set("location", v as FieldLocation)}
-              options={FIELD_LOCATIONS}
-              className="w-24"
-            />
+          <span className="text-[10px] text-(--text-muted) uppercase tracking-widest font-semibold px-2">
+            {field.location}
+          </span>
+
+          {field.required && (
+            <span className="px-1.5 py-0.5 rounded bg-red-400/10 text-red-400 text-[10px] font-bold uppercase tracking-wider">
+              Required
+            </span>
           )}
-
-          {field.type === "array" && (
-            <NativeSelect
-              value={field.itemType}
-              onChange={(v) => set("itemType", v as FieldType | "object")}
-              options={[
-                ...FIELD_TYPES.map((t) => ({ value: t, label: `${t}[]` })),
-                { value: "object", label: "object[]" },
-              ]}
-              className="w-28"
-            />
-          )}
-
-          <button
-            type="button"
-            onClick={() => set("required", !field.required)}
-            className={cn(
-              "px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition-colors shrink-0",
-              field.required
-                ? "bg-red-400/10 border-red-400/30 text-red-400"
-                : "bg-(--bg-elevated) border-(--border) text-(--text-muted) hover:text-(--text-primary)"
-            )}
-          >
-            {field.required ? "required" : "optional"}
-          </button>
-
-          <button
-            type="button"
-            onClick={onDelete}
-            className="p-1.5 rounded-lg text-(--text-muted) hover:text-red-400 hover:bg-red-400/10 opacity-0 group-hover:opacity-100 transition-all shrink-0"
-          >
-            <X className="w-3.5 h-3.5" />
-          </button>
         </div>
 
-        <input
-          type="text"
-          value={field.description}
-          onChange={(e) => set("description", e.target.value)}
-          placeholder="Describe this field…"
-          className="w-full px-2.5 py-1.5 rounded-lg bg-(--bg-elevated) border border-(--border) text-xs text-(--text-secondary) placeholder:text-(--text-muted) outline-none focus:border-(--accent) transition-colors"
-        />
-
-        {supportsEnum && (
-          <div className="flex gap-2">
-            <div className="flex-1">
-              <label className="block text-[10px] text-(--text-muted) mb-1 uppercase tracking-wider">
-                Allowed values <span className="normal-case font-normal">(comma-separated)</span>
-              </label>
-              <input
-                type="text"
-                value={field.allowedValues.join(", ")}
-                onChange={(e) =>
-                  set("allowedValues", e.target.value.split(",").map((s) => s.trim()).filter(Boolean))
-                }
-                placeholder="admin, user, guest"
-                className="w-full px-2.5 py-1.5 rounded-lg bg-(--bg-elevated) border border-(--border) text-xs font-mono text-(--text-primary) placeholder:text-(--text-muted) outline-none focus:border-(--accent) transition-colors"
-              />
-            </div>
-            <div className="w-36">
-              <label className="block text-[10px] text-(--text-muted) mb-1 uppercase tracking-wider">
-                Default value
-              </label>
-              <input
-                type="text"
-                value={field.defaultValue}
-                onChange={(e) => set("defaultValue", e.target.value)}
-                placeholder="(none)"
-                className="w-full px-2.5 py-1.5 rounded-lg bg-(--bg-elevated) border border-(--border) text-xs font-mono text-(--text-primary) placeholder:text-(--text-muted) outline-none focus:border-(--accent) transition-colors"
-              />
-            </div>
-          </div>
+        {field.description && (
+          <p className="text-[11px] text-(--text-muted) pl-6">
+            {field.description}
+          </p>
         )}
       </div>
 
       {hasChildren && expanded && (
-        <div className="mt-2 space-y-2 border-l-2 border-(--border) pl-3">
+        <div className="mt-1.5 space-y-1.5 border-l border-(--border) ml-2 pl-3">
           {field.children.map((child) => (
-            <FieldRow
+            <ReadOnlyFieldRow
               key={child.id}
               field={child}
               depth={depth + 1}
-              onUpdate={(updated) => updateChild(child.id, updated)}
-              onDelete={() => deleteChild(child.id)}
             />
           ))}
-          <button
-            type="button"
-            onClick={addChild}
-            className="flex items-center gap-1.5 text-xs text-(--text-muted) hover:text-(--accent) transition-colors py-1"
-          >
-            <Plus className="w-3 h-3" />
-            Add {field.type === "array" ? "item field" : "nested field"}
-          </button>
         </div>
       )}
     </div>
@@ -258,62 +117,26 @@ interface EndpointEditorProps {
 
 export function EndpointEditor({ endpoint }: EndpointEditorProps) {
   const { duplicateEndpoint, projects } = useAppStore();
-  const { updateEndpoint, deleteEndpoint } = useEndpointSync(endpoint.projectId);
+  const { deleteEndpoint } = useEndpointSync(endpoint.projectId);
   const [activeTab, setActiveTab] = useState<"config" | "history" | "analytics">("config");
 
   const project = projects[endpoint.projectId];
   const fullUrl = project
-    ? endpointFullUrl(project.name, endpoint.name)
-    : `https://aitek.save/my-project/${slugify(endpoint.name) || "endpoint"}`;
-
-  const update = useCallback(
-    <K extends keyof Endpoint>(field: K, value: Endpoint[K]) => {
-      // API integration for updating validation rules or schema mode
-      if (field === "inputCategory" || field === "fields") {
-        const schema_mode = field === "inputCategory" ? (value === "structured" ? "restricted" : "free") : (endpoint.inputCategory === "structured" ? "restricted" : "free");
-        const validation_rules = field === "fields" ? { fields: value } : (endpoint.fields ? { fields: endpoint.fields } : {});
-
-        updateEndpoint({ id: endpoint.id, schema_mode, validation_rules });
-      } else {
-        // For other fields, we just use the store temporarily or ignore if not supported by API
-        // In this architecture, we should probably update the API.
-      }
-    },
-    [endpoint.id, endpoint.inputCategory, endpoint.fields, updateEndpoint]
-  );
-
-
-  function addField() {
-    update("fields", [...(endpoint.fields ?? []), makeField()]);
-  }
-
-  function updateField(id: string, updated: EndpointField) {
-    update("fields", (endpoint.fields ?? []).map((f) => (f.id === id ? updated : f)));
-  }
-
-  function deleteField(id: string) {
-    update("fields", (endpoint.fields ?? []).filter((f) => f.id !== id));
-  }
+    ? endpointFullUrl(project.name, endpoint.id)
+    : `https://aitek.save/my-project/${slugify(endpoint.id) || "endpoint"}`;
 
   function handleDelete() {
-    if (!confirm(`Delete endpoint "${endpoint.name}"?`)) return;
+    if (!confirm(`Delete endpoint "${endpoint.id}"?`)) return;
     deleteEndpoint(endpoint.id);
     toast.success("Endpoint deleted");
   }
 
-  function handleNameBlur() {
-    const cleaned = slugify(endpoint.name) || "new-endpoint";
-    if (cleaned !== endpoint.name) update("name", cleaned);
-  }
-
-  const fields = endpoint.fields ?? [];
-  const inputCategory: InputCategory = endpoint.inputCategory ?? "free-text";
-  const bodyFields  = fields.filter((f) => f.location === "body");
-  const queryFields = fields.filter((f) => f.location === "query");
-  const pathFields  = fields.filter((f) => f.location === "path");
+  const validationRules = endpoint.validationRules ?? [];
+  const schemaMode = endpoint.schemaMode;
 
   return (
     <div className="flex flex-col h-full">
+      {/* Header */}
       <div className="flex items-center gap-3 px-5 py-3 border-b border-(--border) bg-(--bg-surface) shrink-0">
         <div className="flex items-center gap-1 p-1 bg-(--bg-base) rounded-xl border border-(--border) mr-2">
           <button
@@ -354,14 +177,9 @@ export function EndpointEditor({ endpoint }: EndpointEditorProps) {
               /{slugify(project.name)}/
             </Link>
           )}
-          <input
-            type="text"
-            value={endpoint.name}
-            onChange={(e) => update("name", e.target.value)}
-            onBlur={handleNameBlur}
-            placeholder="endpoint-name"
-            className="flex-1 min-w-0 bg-transparent text-sm font-mono font-semibold text-(--text-primary) outline-none placeholder:text-(--text-muted)"
-          />
+          <span className="text-sm font-mono font-semibold text-(--text-primary) truncate">
+            {endpoint.id}
+          </span>
         </div>
 
         <div className="flex items-center gap-1 shrink-0">
@@ -370,14 +188,31 @@ export function EndpointEditor({ endpoint }: EndpointEditorProps) {
           ))}
         </div>
 
-        <div className="flex items-center gap-1 shrink-0">
-          <button onClick={() => { duplicateEndpoint(endpoint.id); toast.success("Duplicated"); }} className="p-1.5 rounded-lg text-(--text-muted) hover:text-(--text-primary) hover:bg-(--bg-overlay) transition-colors"><Copy className="w-3.5 h-3.5" /></button>
-          <button onClick={handleDelete} className="p-1.5 rounded-lg text-(--text-muted) hover:text-red-400 hover:bg-red-400/10 transition-colors"><Trash2 className="w-3.5 h-3.5" /></button>
+        <div className="flex items-center gap-1 shrink-0 ml-2 pl-2 border-l border-(--border)">
+          <button 
+            onClick={() => { duplicateEndpoint(endpoint.id); toast.success("Duplicated (locally)"); }} 
+            className="p-1.5 rounded-lg text-(--text-muted) hover:text-(--text-primary) hover:bg-(--bg-overlay) transition-colors"
+            title="Duplicate Endpoint"
+          >
+            <Copy className="w-3.5 h-3.5" />
+          </button>
+          <button 
+            onClick={handleDelete} 
+            className="p-1.5 rounded-lg text-(--text-muted) hover:text-red-400 hover:bg-red-400/10 transition-colors"
+            title="Delete Endpoint"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
         </div>
       </div>
 
-      <div className="px-5 py-1.5 border-b border-(--border) bg-(--bg-surface)">
-        <span className="text-[11px] font-mono text-(--text-muted) select-all">{fullUrl}</span>
+      {/* URL Banner */}
+      <div className="px-5 py-2 border-b border-(--border) bg-(--bg-surface) flex items-center gap-2">
+        <Globe className="w-3 h-3 text-(--text-muted)" />
+        <span className="text-[11px] font-mono text-(--text-muted) select-all flex-1">{fullUrl}</span>
+        <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-(--bg-base) border border-(--border) text-[10px] font-semibold text-(--text-muted)">
+          <Lock className="w-2.5 h-2.5" /> READ ONLY
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto">
@@ -386,88 +221,70 @@ export function EndpointEditor({ endpoint }: EndpointEditorProps) {
         ) : activeTab === "analytics" ? (
           <AnalyticsPanel endpointId={endpoint.id} />
         ) : (
-          <div className="max-w-3xl mx-auto px-6 py-6 space-y-6">
-            <div>
-              <label className="block text-xs font-semibold text-(--text-muted) uppercase tracking-wider mb-2">Endpoint Name</label>
-              <input
-                type="text"
-                value={endpoint.name}
-                onChange={(e) => update("name", e.target.value)}
-                onBlur={handleNameBlur}
-                className="w-full px-3 py-2.5 rounded-xl bg-(--bg-surface) border border-(--border) text-sm font-mono text-(--text-primary) outline-none focus:border-(--accent) transition-colors"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-(--text-muted) uppercase tracking-wider mb-2">Description</label>
-              <textarea
-                value={endpoint.description}
-                onChange={(e) => update("description", e.target.value)}
-                rows={3}
-                className="w-full px-3 py-2.5 rounded-xl bg-(--bg-surface) border border-(--border) text-sm text-(--text-primary) outline-none focus:border-(--accent) resize-none transition-colors"
-              />
-            </div>
-
-            <div>
-              <label className="block text-xs font-semibold text-(--text-muted) uppercase tracking-wider mb-3">Input Category</label>
-              <div className="grid grid-cols-2 gap-3">
-                <button onClick={() => update("inputCategory", "free-text")} className={cn("flex items-start gap-3 p-4 rounded-xl border-2 text-left transition-all", inputCategory === "free-text" ? "border-(--accent) bg-(--accent-glow)" : "border-(--border) bg-(--bg-surface) hover:border-(--border-strong)")}>
-                  <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5", inputCategory === "free-text" ? "bg-(--accent)" : "bg-(--bg-elevated)")}><Type className={cn("w-4 h-4", inputCategory === "free-text" ? "text-white" : "text-(--text-muted)")} /></div>
-                  <div><div className={cn("text-sm font-semibold", inputCategory === "free-text" ? "text-(--accent)" : "text-(--text-primary)")}>Free Text</div><div className="text-xs text-(--text-muted) mt-0.5 leading-relaxed">No schema enforced.</div></div>
-                </button>
-                <button onClick={() => update("inputCategory", "structured")} className={cn("flex items-start gap-3 p-4 rounded-xl border-2 text-left transition-all", inputCategory === "structured" ? "border-(--accent) bg-(--accent-glow)" : "border-(--border) bg-(--bg-surface) hover:border-(--border-strong)")}>
-                  <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5", inputCategory === "structured" ? "bg-(--accent)" : "bg-(--bg-elevated)")}><Braces className={cn("w-4 h-4", inputCategory === "structured" ? "text-white" : "text-(--text-muted)")} /></div>
-                  <div><div className={cn("text-sm font-semibold", inputCategory === "structured" ? "text-(--accent)" : "text-(--text-primary)")}>Structured</div><div className="text-xs text-(--text-muted) mt-0.5 leading-relaxed">Typed field schema.</div></div>
-                </button>
+          <div className="max-w-3xl mx-auto px-6 py-8 space-y-8">
+            {/* Info Section */}
+            <section className="space-y-4">
+              <div className="flex items-center gap-2 pb-2 border-b border-(--border)">
+                <h2 className="text-xs font-bold text-(--text-primary) uppercase tracking-widest">General Information</h2>
               </div>
-            </div>
-
-            {inputCategory === "structured" && (
-              <div>
-                <div className="flex items-center justify-between mb-3">
-                  <label className="block text-xs font-semibold text-(--text-muted) uppercase tracking-wider">Schema Fields</label>
-                  <button onClick={addField} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-(--accent) text-white text-xs font-semibold hover:bg-teal-400 transition-colors"><Plus className="w-3 h-3" /> Add Field</button>
+              <div className="grid gap-4 bg-(--bg-surface) p-6 rounded-2xl border border-(--border)">
+                <div className="flex flex-col gap-1.5">
+                  <span className="text-[10px] font-bold text-(--text-muted) uppercase tracking-wider">Endpoint Name</span>
+                  <span className="text-sm font-mono text-(--text-primary)">{endpoint.id}</span>
                 </div>
-                {fields.length === 0 ? (
-                  <button onClick={addField} className="w-full flex flex-col items-center justify-center py-10 rounded-xl border-2 border-dashed border-(--border) hover:border-(--accent) hover:bg-(--accent-glow) transition-colors group">
-                    <Plus className="w-6 h-6 text-(--text-muted) group-hover:text-(--accent) mb-2" /><p className="text-sm text-(--text-muted) group-hover:text-(--text-primary)">Add your first field</p>
-                  </button>
-                ) : (
-                  <div className="space-y-4">
-                    {[ { label: "Body", group: bodyFields }, { label: "Query Parameters", group: queryFields }, { label: "Path Parameters", group: pathFields } ].map(({ label, group }) => group.length > 0 ? (
-                      <div key={label}>
-                        <div className="flex items-center gap-2 mb-2"><span className="text-[10px] font-semibold text-(--text-muted) uppercase tracking-widest">{label}</span><div className="flex-1 h-px bg-(--border)" /></div>
-                        <div className="space-y-2">{group.map((field) => <FieldRow key={field.id} field={field} depth={0} onUpdate={(updated) => updateField(field.id, updated)} onDelete={() => deleteField(field.id)} />)}</div>
-                      </div>
-                    ) : null)}
-                    <div className="rounded-xl border border-(--border) bg-(--bg-surface) p-4">
-                      <div className="text-xs font-semibold text-(--text-muted) uppercase tracking-wider mb-3">Schema Preview</div>
-                      <SchemaPreview fields={fields} indent={0} />
-                    </div>
+                {/* {endpoint.description && (
+                  <div className="flex flex-col gap-1.5">
+                    <span className="text-[10px] font-bold text-(--text-muted) uppercase tracking-wider">Description</span>
+                    <span className="text-sm text-(--text-secondary)">{endpoint.description}</span>
                   </div>
-                )}
+                )} */}
+                <div className="flex flex-col gap-1.5">
+                  <span className="text-[10px] font-bold text-(--text-muted) uppercase tracking-wider">Schema Mode</span>
+                  <div className="flex items-center gap-2">
+                    <span className={cn(
+                      "px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider border",
+                      schemaMode === "restricted" ? "text-amber-400 border-amber-400/20 bg-amber-400/5" : "text-emerald-400 border-emerald-400/20 bg-emerald-400/5"
+                    )}>
+                      {schemaMode}
+                    </span>
+                    <span className="text-[11px] text-(--text-muted)">
+                      {schemaMode === "restricted" ? "Enforced data validation" : "No schema validation"}
+                    </span>
+                  </div>
+                </div>
               </div>
+            </section>
+
+            {/* Schema Section */}
+            {schemaMode === "restricted" && (
+              <section className="space-y-4">
+                <div className="flex items-center gap-2 pb-2 border-b border-(--border)">
+                  <h2 className="text-xs font-bold text-(--text-primary) uppercase tracking-widest">Data Schema</h2>
+                </div>
+                {/* <div className="space-y-3 pl-4 border-l border-(--border)">
+                  {fields.length === 0 ? (
+                    <div className="p-8 text-center bg-(--bg-surface) rounded-2xl border border-(--border) border-dashed">
+                      <p className="text-xs text-(--text-muted)">No fields defined for this schema.</p>
+                    </div>
+                  ) : (
+                    fields.map((field) => (
+                      <ReadOnlyFieldRow key={field.id} field={field} depth={0} />
+                    ))
+                  )}
+                </div> */}
+                <pre>{JSON.stringify(validationRules, null, 2)}</pre>
+              </section>
             )}
+
+            {/* Note */}
+            <div className="p-4 rounded-xl bg-amber-400/5 border border-amber-400/10 text-center">
+              <p className="text-[11px] text-amber-400/80 font-medium">
+                This endpoint was finalized at creation. Properties and schema cannot be modified.
+              </p>
+            </div>
           </div>
         )}
       </div>
-    </div>
-  );
-}
-
-function SchemaPreview({ fields, indent }: { fields: EndpointField[]; indent: number }) {
-  return (
-    <div className="font-mono text-xs space-y-0.5" style={{ paddingLeft: indent * 16 }}>
-      {fields.map((f) => (
-        <div key={f.id}>
-          <div className="flex items-center gap-2 py-0.5">
-            <span className="text-(--text-secondary)">{f.name || "unnamed"}</span>
-            <span className={cn("px-1.5 py-0 rounded border text-[10px]", TYPE_COLORS[f.type] || "text-zinc-400")}>{f.type === "array" ? `${f.itemType}[]` : f.type}</span>
-            {f.required && <span className="text-red-400 text-[10px]">*</span>}
-          </div>
-          {(f.type === "object" || f.type === "array") && f.children.length > 0 && <SchemaPreview fields={f.children} indent={indent + 1} />}
-        </div>
-      ))}
     </div>
   );
 }

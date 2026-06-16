@@ -111,25 +111,14 @@ export interface EndpointField {
 // ─── Endpoint ─────────────────────────────────────────────────────────────────
 
 export interface Endpoint {
-  id: string;
-  projectId: string;
-  name: string;
-  description: string;
-  url: string;
-  inputCategory: InputCategory;
-  fields: EndpointField[];
-  // kept for runner / future use
-  method: HttpMethod;
-  headers: KeyValuePair[];
-  queryParams: KeyValuePair[];
-  auth: AuthConfig;
-  contentType: ContentType;
-  body: string;
-  formData: KeyValuePair[];
-  lastResponse?: EndpointResponse;
-  createdAt: number;
-  updatedAt: number;
-  tags: string[];
+        id: string,
+        projectId: string,
+        APIHashKey: string,
+        schemaMode: string,
+        validationRules: any,
+        isActive: boolean,
+        createdAt: number,
+        lastSeen: number,
 }
 
 // ─── Project ─────────────────────────────────────────────────────────────────

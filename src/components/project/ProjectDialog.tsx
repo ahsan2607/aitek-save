@@ -6,6 +6,7 @@ import { PROJECT_COLORS, PROJECT_ICONS, cn } from "@/lib/utils";
 import { X, Check } from "lucide-react";
 import toast from "react-hot-toast";
 import { slugify } from "@/types";
+import { useProjectSync } from "@/lib/hooks/useProjectSync";
 
 interface ProjectDialogProps {
   onClose: () => void;
@@ -13,7 +14,8 @@ interface ProjectDialogProps {
 }
 
 export function ProjectDialog({ onClose, projectId }: ProjectDialogProps) {
-  const { projects, createProject, updateProject } = useAppStore();
+  const { projects } = useAppStore();
+  const { createProject, updateProject } = useProjectSync();
   const existing = projectId ? projects[projectId] : undefined;
 
   const [name, setName] = useState(existing?.name ?? "");
@@ -32,9 +34,9 @@ export function ProjectDialog({ onClose, projectId }: ProjectDialogProps) {
     }
 
     if (existing && projectId) {
-      updateProject(projectId, { name: name.trim(), description: description.trim(), color, icon });
+      updateProject({id: projectId, name: name.trim()});
     } else {
-      createProject({ name: name.trim(), description: description.trim(), color, icon, envVars: []});
+      createProject(name.trim());
     }
     onClose();
   }

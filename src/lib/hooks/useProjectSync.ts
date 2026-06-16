@@ -60,7 +60,7 @@ export function useProjectSync() {
   // Update project
   const updateProjectMutation = useMutation({
     mutationFn: ({ id, name }: { id: string; name: string }) => 
-      api.put(`/api/v1/projects/${id}?name=${encodeURIComponent(name)}`, {}),
+      api.put(`/api/v1/projects/${id}?new_name=${encodeURIComponent(name)}`, {}),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["projects"] });
       toast.success("Project updated");
@@ -70,8 +70,32 @@ export function useProjectSync() {
     },
   });
 
+  // Fetch single project
+  function useProject(id: string) {
+    return useQuery({
+      queryKey: ["projects", id],
+      queryFn: async () => {
+        const response = await api.get<{ data: any }>(`/api/v1/projects/${id}`);
+        const p = response.data;
+        return {
+          id: p.project_id,
+          name: p.name,
+          description: p.description || "",
+          color: p.color || "#00f2ea",
+          icon: p.icon || "📁",
+          envVars: [],
+          endpointIds: [],
+          createdAt: new Date(p.created_at).getTime(),
+          updatedAt: new Date(p.updated_at || p.created_at).getTime(),
+        };
+      },
+      enabled: !!id,
+    });
+  }
+
   return {
     isLoadingProjects,
+    useProject,
     createProject: createProjectMutation.mutate,
     deleteProject: deleteProjectMutation.mutate,
     updateProject: updateProjectMutation.mutate,
