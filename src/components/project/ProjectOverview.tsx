@@ -135,7 +135,7 @@ export function ProjectOverview({ projectId }: ProjectOverviewProps) {
                     {/* <span className="text-xs text-(--text-muted)">
                       {(ep.fields ?? []).length} field{(ep.fields ?? []).length !== 1 ? "s" : ""}
                     </span> */}
-                    <span className="text-xs text-(--text-muted)">{timeAgo(ep.lastSeen)}</span>
+                    <span className="text-xs text-(--text-muted)">{timeAgo(ep.lastSeen ?? 0)}</span>
                     <ExternalLink className="w-3.5 h-3.5 text-(--text-muted) opacity-0 group-hover:opacity-100 transition-opacity" />
                   </div>
                 </button>

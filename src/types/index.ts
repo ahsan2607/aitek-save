@@ -108,17 +108,43 @@ export interface EndpointField {
   itemType: FieldType | "object"; // element type when type === "array"
 }
 
+// ─── Telemetry ────────────────────────────────────────────────────────────────
+
+export interface TelemetryHistory {
+  timestamp: string;
+  data: any;
+}
+
 // ─── Endpoint ─────────────────────────────────────────────────────────────────
 
 export interface Endpoint {
-        id: string,
-        projectId: string,
-        APIHashKey: string,
-        schemaMode: string,
-        validationRules: any,
-        isActive: boolean,
-        createdAt: number,
-        lastSeen: number,
+  id: string;
+  projectId: string;
+  createdAt: number;
+  
+  // Database fields
+  APIHashKey?: string;
+  schemaMode?: string;
+  validationRules?: any;
+  isActive?: boolean;
+  lastSeen?: number;
+
+  // Frontend / Store / Runner fields
+  name?: string;
+  description?: string;
+  url?: string;
+  inputCategory?: InputCategory;
+  fields?: EndpointField[];
+  method?: HttpMethod;
+  headers?: KeyValuePair[];
+  queryParams?: KeyValuePair[];
+  auth?: AuthConfig;
+  contentType?: ContentType;
+  body?: string;
+  formData?: KeyValuePair[];
+  lastResponse?: EndpointResponse;
+  updatedAt?: number;
+  tags?: string[];
 }
 
 // ─── Project ─────────────────────────────────────────────────────────────────

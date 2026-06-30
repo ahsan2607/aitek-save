@@ -223,7 +223,7 @@ export const useAppStore = create<AppState>()(
             ...JSON.parse(JSON.stringify(original)),
             id: uuidv4(),
             name: `${original.name}-copy`,
-            fields: original.fields.map(regenerateFieldIds),
+            fields: original.fields?.map(regenerateFieldIds) ?? [],
             createdAt: Date.now(),
             updatedAt: Date.now(),
             lastResponse: undefined,

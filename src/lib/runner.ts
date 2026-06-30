@@ -17,9 +17,9 @@ function buildVarMap(vars: EnvironmentVariable[]): Record<string, string> {
  * Input: endpoint.url and query params. Final state: interpolated URL string.
  */
 function buildUrl(endpoint: Endpoint, varMap: Record<string, string>): string {
-  let url = interpolateVariables(endpoint.url.trim(), varMap);
+  let url = interpolateVariables((endpoint.url || "").trim(), varMap);
 
-  const params = kvToRecord(endpoint.queryParams);
+  const params = kvToRecord(endpoint.queryParams || []);
   const interpolatedParams = Object.fromEntries(
     Object.entries(params).map(([k, v]) => [k, interpolateVariables(v, varMap)])
   );
@@ -38,12 +38,12 @@ function buildHeaders(endpoint: Endpoint, varMap: Record<string, string>): Recor
   const headers: Record<string, string> = {};
 
   // Custom headers
-  for (const h of endpoint.headers.filter((h) => h.enabled && h.key)) {
+  for (const h of (endpoint.headers || []).filter((h) => h.enabled && h.key)) {
     headers[h.key] = interpolateVariables(h.value, varMap);
   }
 
   // Auth
-  const { auth } = endpoint;
+  const auth = endpoint.auth || { type: "none" };
   if (auth.type === "bearer" && auth.bearerToken) {
     headers["Authorization"] = `Bearer ${interpolateVariables(auth.bearerToken, varMap)}`;
   } else if (auth.type === "basic" && auth.basicUsername) {
@@ -54,9 +54,11 @@ function buildHeaders(endpoint: Endpoint, varMap: Record<string, string>): Recor
   }
 
   // Content-Type
-  if (!["GET", "HEAD", "OPTIONS"].includes(endpoint.method) && endpoint.contentType !== "none") {
+  const method = endpoint.method || "GET";
+  const contentType = endpoint.contentType || "none";
+  if (!["GET", "HEAD", "OPTIONS"].includes(method) && contentType !== "none") {
     if (!headers["Content-Type"] && !headers["content-type"]) {
-      headers["Content-Type"] = endpoint.contentType;
+      headers["Content-Type"] = contentType;
     }
   }
 
@@ -68,16 +70,19 @@ function buildHeaders(endpoint: Endpoint, varMap: Record<string, string>): Recor
  * Input: endpoint content type and body/form data. Final state: serialized body or undefined.
  */
 function buildBody(endpoint: Endpoint, varMap: Record<string, string>): string | undefined {
-  if (["GET", "HEAD", "OPTIONS"].includes(endpoint.method)) return undefined;
-  if (endpoint.contentType === "none") return undefined;
+  const method = endpoint.method || "GET";
+  const contentType = endpoint.contentType || "none";
+  if (["GET", "HEAD", "OPTIONS"].includes(method)) return undefined;
+  if (contentType === "none") return undefined;
 
-  if (endpoint.contentType === "application/x-www-form-urlencoded") {
-    const formRecord = kvToRecord(endpoint.formData);
+  if (contentType === "application/x-www-form-urlencoded") {
+    const formRecord = kvToRecord(endpoint.formData || []);
     return new URLSearchParams(formRecord).toString();
   }
 
-  if (endpoint.body.trim()) {
-    return interpolateVariables(endpoint.body, varMap);
+  const body = endpoint.body || "";
+  if (body.trim()) {
+    return interpolateVariables(body, varMap);
   }
 
   return undefined;
@@ -105,7 +110,7 @@ export async function runEndpoint(
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      method: endpoint.method,
+      method: endpoint.method || "GET",
       url,
       headers,
       body,

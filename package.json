@@ -2,6 +2,9 @@
   "name": "aitek-save",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": "18.19.1"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -18,7 +21,7 @@
     "framer-motion": "^12.39.0",
     "immer": "^11.1.8",
     "lucide-react": "^1.16.0",
-    "next": "16.2.6",
+    "next": "^15.2.0",
     "react": "19.2.6",
     "react-dom": "19.2.6",
     "react-hot-toast": "^2.6.0",
@@ -28,12 +31,12 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
-    "@types/node": "^25",
+    "@types/node": "^18.19.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "babel-plugin-react-compiler": "1.0.0",
-    "eslint": "^10",
-    "eslint-config-next": "16.2.6",
+    "eslint": "^9",
+    "eslint-config-next": "^15.2.0",
     "tailwindcss": "^4",
     "typescript": "^6"
   }
